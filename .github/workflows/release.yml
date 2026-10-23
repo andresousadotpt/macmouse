@@ -16,13 +16,18 @@ permissions:
 jobs:
   release:
     runs-on: macos-26
+    # Only pushes to this repo's main. A fork PR from a branch named "main" also
+    # completes CI on "main", and must never reach a job that holds secrets.
     if: >-
       ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == github.repository &&
           !startsWith(github.event.workflow_run.head_commit.message, 'chore: bump version') }}
     env:
-      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-      SIGNING_CERT_P12: ${{ secrets.SIGNING_CERT_P12 }}
-      SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+      # Booleans only; each secret is passed to the one step that needs it.
+      HAS_SIGNING_CERT: ${{ secrets.SIGNING_CERT_P12 != '' }}
+      HAS_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,7 +70,10 @@ jobs:
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Import signing certificate
-        if: ${{ env.SIGNING_CERT_P12 != '' }}
+        if: ${{ env.HAS_SIGNING_CERT == 'true' }}
+        env:
+          SIGNING_CERT_P12: ${{ secrets.SIGNING_CERT_P12 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
         run: |
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
@@ -92,7 +100,7 @@ jobs:
             "${APP_BUNDLE_NAME}-${{ steps.version.outputs.version }}.zip"
 
       - name: Upload GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ env.APP_BUNDLE_NAME }} ${{ steps.version.outputs.version }}
@@ -101,8 +109,9 @@ jobs:
           overwrite_files: true
 
       - name: Update Homebrew cask
-        if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}
+        if: ${{ env.HAS_TAP_TOKEN == 'true' }}
         env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           SHA256=$(shasum -a 256 "${APP_BUNDLE_NAME}-${VERSION}.zip" | awk '{ print $1 }')
