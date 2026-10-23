@@ -12,6 +12,8 @@ cask "{{CASK_NAME}}" do
 
   app "{{APP_BUNDLE_NAME}}.app"
 
+  zap trash: "~/Library/Application Support/{{APP_SUPPORT_DIR}}"
+
   caveats <<~EOS
     {{APP_DISPLAY_NAME}} needs Accessibility access to change mouse input:
       System Settings > Privacy & Security > Accessibility
@@ -19,8 +21,4 @@ cask "{{CASK_NAME}}" do
     Builds are ad-hoc signed, so after each upgrade remove the old
     {{APP_DISPLAY_NAME}} entry from that list and enable it again.
   EOS
-
-  zap trash: [
-    "~/Library/Application Support/{{APP_SUPPORT_DIR}}",
-  ]
 end
