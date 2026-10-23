@@ -18,6 +18,7 @@ struct MacMouseApp: App {
 
 private struct MenuContent: View {
     @Bindable var state: AppState
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Text("MacMouse — \(state.statusText)")
@@ -29,8 +30,15 @@ private struct MenuContent: View {
         }
         Toggle("Enabled", isOn: $state.config.enabled)
         Divider()
-        SettingsLink {
-            Text("Settings…")
+        Button("Settings…") {
+            openSettings()
+            // A menu-bar-only app is never frontmost, so the window would open behind others.
+            NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.async {
+                NSApp.windows
+                    .first { $0.identifier?.rawValue == "com_apple_SwiftUI_Settings_window" }?
+                    .makeKeyAndOrderFront(nil)
+            }
         }
         .keyboardShortcut(",")
         Divider()
