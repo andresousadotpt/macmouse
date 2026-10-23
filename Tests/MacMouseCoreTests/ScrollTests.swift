@@ -90,10 +90,25 @@ final class ScrollModeTests: XCTestCase {
         XCTAssertEqual(s.mode(for: [.control, .shift]), ScrollMode(horizontal: true, fast: true))
     }
 
-    func testUnassignedModifierPassesThrough() {
+    func testCommandZoomsByDefault() {
         let s = ScrollSettings()
+        XCTAssertEqual(s.mode(for: .command), ScrollMode(zoom: true))
+    }
+
+    func testUnassignedModifierPassesThrough() {
+        var s = ScrollSettings()
+        s.zoomModifier = .none
         XCTAssertTrue(s.mode(for: .command).passThrough)
         XCTAssertTrue(s.mode(for: [.command, .shift]).passThrough)
+    }
+
+    func testOlderConfigWithoutZoomModifierDecodes() throws {
+        let json = #"{"smoothness":"off","speed":"fast","reverseDirection":true,"#
+            + #""horizontalModifier":"shift","preciseModifier":"option","fastModifier":"control"}"#
+        let s = try JSONDecoder().decode(ScrollSettings.self, from: Data(json.utf8))
+        XCTAssertTrue(s.reverseDirection)
+        XCTAssertEqual(s.speed, .fast)
+        XCTAssertEqual(s.zoomModifier, .command)
     }
 
     func testDisabledModifier() {

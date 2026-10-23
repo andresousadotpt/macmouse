@@ -211,8 +211,27 @@ public struct ScrollSettings: Codable, Hashable, Sendable {
     public var horizontalModifier: ModifierKey = .shift
     public var preciseModifier: ModifierKey = .option
     public var fastModifier: ModifierKey = .control
+    public var zoomModifier: ModifierKey = .command
 
     public init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case smoothness, speed, reverseDirection
+        case horizontalModifier, preciseModifier, fastModifier, zoomModifier
+    }
+
+    // Missing keys fall back to defaults, so configs saved before a setting existed still load.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = ScrollSettings()
+        smoothness = try c.decodeIfPresent(Smoothness.self, forKey: .smoothness) ?? d.smoothness
+        speed = try c.decodeIfPresent(ScrollSpeed.self, forKey: .speed) ?? d.speed
+        reverseDirection = try c.decodeIfPresent(Bool.self, forKey: .reverseDirection) ?? d.reverseDirection
+        horizontalModifier = try c.decodeIfPresent(ModifierKey.self, forKey: .horizontalModifier) ?? d.horizontalModifier
+        preciseModifier = try c.decodeIfPresent(ModifierKey.self, forKey: .preciseModifier) ?? d.preciseModifier
+        fastModifier = try c.decodeIfPresent(ModifierKey.self, forKey: .fastModifier) ?? d.fastModifier
+        zoomModifier = try c.decodeIfPresent(ModifierKey.self, forKey: .zoomModifier) ?? d.zoomModifier
+    }
 }
 
 public struct MouseConfig: Codable, Hashable, Sendable {

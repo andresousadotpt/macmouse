@@ -38,7 +38,9 @@ files from another product are included in this repository.
   flicks accelerate the distance travelled.
 - R8. Reverse the mouse-wheel direction independently of the trackpad.
 - R9. Holding a keyboard modifier while scrolling changes the behaviour:
-  horizontal scroll, precise (small, unsmoothed steps) and fast scroll.
+  horizontal scroll, precise (small, unsmoothed steps), fast scroll and zoom
+  (one app zoom step per notch). Unassigned modifiers pass through, still
+  honouring R8.
 
 ### Buttons
 

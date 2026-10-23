@@ -87,10 +87,11 @@ private struct ScrollTab: View {
                 modifierPicker("Horizontal scroll", $scroll.horizontalModifier)
                 modifierPicker("Precise scroll", $scroll.preciseModifier)
                 modifierPicker("Fast scroll", $scroll.fastModifier)
+                modifierPicker("Zoom", $scroll.zoomModifier)
             } header: {
                 Text("Hold a key while scrolling")
             } footer: {
-                Text("Other modifiers (for example ⌘ to zoom in some apps) pass through unchanged.")
+                Text("Zoom sends ⌘= / ⌘−. Other modifiers pass through to the app.")
                     .foregroundStyle(.secondary)
             }
         }

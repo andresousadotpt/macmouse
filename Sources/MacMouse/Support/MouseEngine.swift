@@ -247,7 +247,16 @@ final class MouseEngine: NSObject {
 
         let settings = config.scroll
         let mode = settings.mode(for: ModifierSet(eventFlags: event.flags.rawValue))
-        if mode.passThrough { return true }
+        if mode.passThrough {
+            if settings.reverseDirection { Self.reverse(event) }
+            return true
+        }
+        if mode.zoom {
+            animator.stop()
+            let amount = dy != 0 ? dy : dx
+            EventPoster.perform((amount > 0 ? MouseAction.zoomIn : .zoomOut).route)
+            return false
+        }
 
         var (x, y) = (dx, dy)
         if settings.reverseDirection { (x, y) = (-x, -y) }
@@ -271,6 +280,18 @@ final class MouseEngine: NSObject {
         animator.addNotches(dx: x, dy: y, at: now, multiplier: multiplier)
         startGlide()
         return false
+    }
+
+    /// Flips a wheel event in place so pass-through scrolls honour "Reverse direction".
+    private static func reverse(_ event: CGEvent) {
+        let fields: [CGEventField] = [
+            .scrollWheelEventDeltaAxis1, .scrollWheelEventDeltaAxis2,
+            .scrollWheelEventFixedPtDeltaAxis1, .scrollWheelEventFixedPtDeltaAxis2,
+            .scrollWheelEventPointDeltaAxis1, .scrollWheelEventPointDeltaAxis2,
+        ]
+        for field in fields {
+            event.setIntegerValueField(field, value: -event.getIntegerValueField(field))
+        }
     }
 
     private func wheelWhileHeld(_ wheel: WheelBehavior, dx: Double, dy: Double, at now: TimeInterval) {

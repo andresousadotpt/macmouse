@@ -8,7 +8,7 @@ at home on a Mac:
 - **Smooth scrolling** — wheel notches become a decelerating glide, with
   adjustable smoothness and speed; quick flicks scroll further.
 - **Reverse direction** for the mouse wheel only (trackpads untouched).
-- **Scroll modifiers** — hold ⇧ for horizontal, ⌥ for precise, ⌃ for fast scrolling.
+- **Scroll modifiers** — hold ⇧ for horizontal, ⌥ for precise, ⌃ for fast scrolling, ⌘ to zoom.
 - **Button actions** — click, double/triple click or hold an extra button to trigger
   Mission Control, Application Windows, Show Desktop, Launchpad, Spaces,
   Back/Forward, Middle Click, Look Up, Zoom, or any keyboard shortcut you record.
