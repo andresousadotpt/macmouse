@@ -23,9 +23,11 @@ enum Updater {
         }
     }
 
-    /// `owner/repo` written into Info.plist by `packaging/build-app.sh`; absent under `swift run`.
+    /// `owner/repo` to check for releases; `nil` under `swift run` and for local
+    /// "Dev" builds, which must not offer to replace themselves with a release.
     static var repository: String? {
-        Bundle.main.object(forInfoDictionaryKey: "MacMouseUpdateRepository") as? String
+        guard Bundle.main.bundleIdentifier?.hasSuffix(".dev") == false else { return nil }
+        return AppInfo.repository
     }
 
     static var bundleURL: URL { Bundle.main.bundleURL }

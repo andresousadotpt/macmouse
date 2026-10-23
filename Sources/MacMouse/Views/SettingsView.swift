@@ -13,6 +13,8 @@ struct SettingsView: View {
                 .tabItem { Label("Scrolling", systemImage: "scroll") }
             ButtonsTab(config: $state.config)
                 .tabItem { Label("Buttons", systemImage: "computermouse") }
+            AboutTab()
+                .tabItem { Label("About", systemImage: "info.circle") }
         }
         .frame(width: 620, height: 480)
         .onAppear { SettingsWindow.bringToFront() }
@@ -59,7 +61,6 @@ private struct GeneralTab: View {
                 UpdatesSection(state: state)
             }
             Section {
-                LabeledContent("Version", value: AppVersion.marketing)
                 Button("Restore Default Settings") { state.restoreDefaults() }
             }
         }

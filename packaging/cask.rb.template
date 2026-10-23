@@ -13,6 +13,16 @@ cask "{{CASK_NAME}}" do
 
   app "{{APP_BUNDLE_NAME}}.app"
 
+  # Releases are signed but not notarized (no paid Apple Developer account), so
+  # clear the download quarantine to skip the "Apple could not verify" prompt.
+  # Runs on the unpacked app before it is moved into place.
+  preflight_steps do
+    run "/usr/bin/xattr",
+        args:           ["-dr", "com.apple.quarantine", "{{APP_BUNDLE_NAME}}.app"],
+        chdir:          ".",
+        writable_paths: ["{{APP_BUNDLE_NAME}}.app"]
+  end
+
   zap trash: "~/Library/Application Support/{{APP_SUPPORT_DIR}}"
 
   caveats <<~EOS

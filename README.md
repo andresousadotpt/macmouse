@@ -38,8 +38,11 @@ brew install --cask macmouse
 Then open **MacMouse** and allow it in **System Settings → Privacy & Security →
 Accessibility**. MacMouse starts working as soon as access is granted.
 
-If macOS blocks the first launch, right-click the app → **Open**, or use
-System Settings → Privacy & Security → **Open Anyway**.
+Releases are not notarized (that needs a paid Apple Developer account). The
+Homebrew cask clears the download quarantine, so brew installs open without the
+"Apple could not verify" prompt, and in-app updates never trigger it. If you
+download the zip by hand and macOS blocks the first launch, use System Settings →
+Privacy & Security → **Open Anyway**.
 
 > Releases are signed with a stable self-signed certificate, so Accessibility access
 > survives upgrades. Coming from 0.1.x (ad-hoc signed), remove MacMouse from the
@@ -62,7 +65,7 @@ Requirements: macOS 14 (Sonoma) or later, Xcode Command Line Tools (full Xcode f
 make build    # debug build
 make run      # build and launch via swift run (event tap needs Accessibility for the terminal)
 make test     # unit tests for MacMouseCore (requires full Xcode)
-make app      # release .app in ./dist/
+make app      # local "MacMouse Dev" .app in ./dist/ (bundle ID pt.andresousa.macmouse.dev)
 make clean    # remove build artifacts
 ```
 

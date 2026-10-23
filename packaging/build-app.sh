@@ -24,9 +24,18 @@ mkdir -p "$BUNDLE/Contents/Resources"
 
 cp "$BIN_PATH" "$BUNDLE/Contents/MacOS/$APP_EXECUTABLE"
 cp "$ROOT/packaging/Info.plist" "$BUNDLE/Contents/Info.plist"
-# Where the in-app updater looks for releases.
-/usr/libexec/PlistBuddy -c "Add :MacMouseUpdateRepository string $GITHUB_OWNER/$GITHUB_REPO" \
-  "$BUNDLE/Contents/Info.plist"
+PLIST="$BUNDLE/Contents/Info.plist"
+# Used for the About links and by the in-app updater.
+/usr/libexec/PlistBuddy -c "Add :MacMouseRepository string $GITHUB_OWNER/$GITHUB_REPO" "$PLIST"
+if [[ -z "${CI:-}" ]]; then
+  # Local builds are a separate "Dev" app so macOS never launches them in place of
+  # the installed release (same bundle ID would let Launch Services pick either).
+  echo "==> Local build: bundle ID $APP_BUNDLE_ID.dev, no self-update"
+  APP_BUNDLE_ID="$APP_BUNDLE_ID.dev"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $APP_BUNDLE_ID" "$PLIST"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_DISPLAY_NAME Dev" "$PLIST"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleName $APP_DISPLAY_NAME Dev" "$PLIST"
+fi
 cp "$ROOT/packaging/App.entitlements" "$BUNDLE/Contents/entitlements.plist"
 
 if [[ ! -f "$RESOURCES_DIR/Logo.png" ]]; then

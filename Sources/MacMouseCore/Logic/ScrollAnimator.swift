@@ -69,9 +69,15 @@ public struct ScrollAnimator: Sendable {
         } else {
             streak = 0
         }
-        if !sameDirection {
-            // Reversing must feel immediate: drop the old glide.
-            remaining = (0, 0)
+        // Reversing must feel immediate: drop the old glide on that axis only, so
+        // mixing vertical and horizontal notches never cancels the other axis.
+        if direction.x != 0 && remaining.x.signum == -direction.x {
+            remaining.x = 0
+            carry.x = 0
+        }
+        if direction.y != 0 && remaining.y.signum == -direction.y {
+            remaining.y = 0
+            carry.y = 0
         }
         lastNotch = time
         lastDirection = direction

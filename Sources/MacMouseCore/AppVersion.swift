@@ -6,4 +6,9 @@ public enum AppVersion {
     public static var marketing: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }
+
+    /// `CFBundleVersion`, or `nil` outside an app bundle.
+    public static var build: String? {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+    }
 }

@@ -37,6 +37,9 @@ Runtime gotchas:
    Accessibility across upgrades and lets the updater verify downloads. Never rotate it casually.
 3. Never intercept buttons 1–2, and pass through any event `MouseConfig.intercepts` rejects.
 4. Config decoding is tolerant (missing keys → defaults). Keep it that way when adding fields.
+5. Local `make app` builds are "MacMouse Dev" (`<bundle id>.dev`, no self-update) so macOS never
+   launches a stale `dist/` copy instead of the installed release. Only CI (`CI` set) builds the
+   real bundle ID. Dev builds need their own Accessibility entry.
 
 ## Bootstrap checklist (new app from skeleton)
 

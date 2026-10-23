@@ -55,6 +55,21 @@ final class ScrollAnimatorTests: XCTestCase {
         XCTAssertEqual(drain(&a).y, 20)
     }
 
+    func testOtherAxisDoesNotCancelGlide() {
+        var a = ScrollAnimator(tuning: .init(pixelsPerNotch: 50, timeConstant: 0.1))
+        a.addNotches(dx: 0, dy: 1, at: 0)
+        _ = a.step(dt: 1.0 / 120)
+        a.addNotches(dx: 1, dy: 0, at: 0.01)
+        var total = (x: 0, y: 0)
+        while !a.isIdle {
+            let d = a.step(dt: 1.0 / 120)
+            total.x += d.dx
+            total.y += d.dy
+        }
+        XCTAssertEqual(total.x, 50)
+        XCTAssertGreaterThan(total.y, 40, "vertical glide keeps running after a horizontal notch")
+    }
+
     func testReversingDropsPreviousGlide() {
         var a = ScrollAnimator(tuning: .init(pixelsPerNotch: 50, timeConstant: 0.1))
         a.addNotches(dx: 0, dy: 1, at: 0)
