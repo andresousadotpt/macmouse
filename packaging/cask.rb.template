@@ -8,6 +8,7 @@ cask "{{CASK_NAME}}" do
   desc "{{APP_DESCRIPTION}}"
   homepage "https://github.com/{{GITHUB_OWNER}}/{{GITHUB_REPO}}"
 
+  auto_updates true
   depends_on macos: :sonoma
 
   app "{{APP_BUNDLE_NAME}}.app"
@@ -18,7 +19,8 @@ cask "{{CASK_NAME}}" do
     {{APP_DISPLAY_NAME}} needs Accessibility access to change mouse input:
       System Settings > Privacy & Security > Accessibility
 
-    Builds are ad-hoc signed, so after each upgrade remove the old
-    {{APP_DISPLAY_NAME}} entry from that list and enable it again.
+    {{APP_DISPLAY_NAME}} can update itself (Settings > General > Updates).
+    If upgrading from 0.1.x, remove the old entry from that list once and
+    enable it again; later versions keep the permission.
   EOS
 end

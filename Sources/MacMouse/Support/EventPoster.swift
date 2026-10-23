@@ -37,6 +37,8 @@ enum EventPoster {
             pressKey(keyCode, flags: CGEventFlags(rawValue: modifiers.rawValue))
         case .middleClick:
             click(button: 3)
+        case .smartZoom:
+            postGesture(subtype: 22)
         }
     }
 
@@ -59,6 +61,32 @@ enum EventPoster {
         case none = 0, began = 1, changed = 2, ended = 4
     }
 
+    // Trackpad gestures are window-server events of type 29 with no public
+    // constructor. Field numbers are listed in docs/CLEAN_ROOM.md.
+    private static let gestureSubtype = CGEventField(rawValue: 110)!
+    private static let gestureScrollX = CGEventField(rawValue: 116)!
+    private static let gestureScrollY = CGEventField(rawValue: 119)!
+    private static let gestureMagnification = CGEventField(rawValue: 113)!
+    private static let gesturePhase = CGEventField(rawValue: 132)!
+
+    private static func postGesture(subtype: Int64, phase: Phase = .none, configure: (CGEvent) -> Void = { _ in }) {
+        guard let event = CGEvent(source: source) else { return }
+        event.type = unsafeBitCast(UInt32(29), to: CGEventType.self)
+        event.setIntegerValueField(gestureSubtype, value: subtype)
+        if phase != .none {
+            event.setIntegerValueField(gesturePhase, value: phase.rawValue)
+        }
+        configure(event)
+        post(event)
+    }
+
+    /// Posts a trackpad-style pinch step.
+    static func magnify(_ amount: Double, phase: Phase) {
+        postGesture(subtype: 8, phase: phase) {
+            $0.setDoubleValueField(gestureMagnification, value: amount)
+        }
+    }
+
     /// Posts a pixel-precise ("continuous") scroll, like a trackpad would.
     /// Positive `dy` scrolls content down (wheel up), positive `dx` scrolls left.
     static func scroll(dx: Int32, dy: Int32, phase: Phase = .none) {
@@ -71,5 +99,13 @@ enum EventPoster {
             event?.setIntegerValueField(.scrollWheelEventScrollPhase, value: phase.rawValue)
         }
         post(event)
+        // A trackpad pairs each phased scroll with a scroll gesture, which apps use
+        // for trackpad-only behaviour such as elastic overscroll.
+        if phase != .none {
+            postGesture(subtype: 6, phase: phase) {
+                $0.setDoubleValueField(gestureScrollX, value: Double(dx))
+                $0.setDoubleValueField(gestureScrollY, value: Double(dy))
+            }
+        }
     }
 }

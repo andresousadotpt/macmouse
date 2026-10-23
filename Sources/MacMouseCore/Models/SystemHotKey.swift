@@ -17,6 +17,8 @@ public enum ActionRoute: Equatable, Sendable {
     case systemHotKey(SystemHotKey)
     case keystroke(keyCode: UInt16, modifiers: ModifierSet)
     case middleClick
+    /// Trackpad two-finger double-tap.
+    case smartZoom
 }
 
 /// macOS virtual key codes (US layout positions) for the keys we press.
@@ -44,6 +46,7 @@ public extension MouseAction {
         case .lookUp: .keystroke(keyCode: KeyCode.d, modifiers: [.control, .command])
         case .zoomIn: .keystroke(keyCode: KeyCode.equal, modifiers: .command)
         case .zoomOut: .keystroke(keyCode: KeyCode.minus, modifiers: .command)
+        case .smartZoom: .smartZoom
         case .shortcut(let s): .keystroke(keyCode: s.keyCode, modifiers: s.modifiers)
         }
     }

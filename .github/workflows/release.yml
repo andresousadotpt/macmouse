@@ -21,6 +21,8 @@ jobs:
           !startsWith(github.event.workflow_run.head_commit.message, 'chore: bump version') }}
     env:
       HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      SIGNING_CERT_P12: ${{ secrets.SIGNING_CERT_P12 }}
+      SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,6 +63,22 @@ jobs:
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Import signing certificate
+        if: ${{ env.SIGNING_CERT_P12 != '' }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$SIGNING_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$SIGNING_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          # A self-signed identity is usable by codesign once its keychain is on the search list.
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          echo "CODESIGN_IDENTITY=MacMouse Release Signing" >> "$GITHUB_ENV"
 
       - name: Build app
         run: |

@@ -81,13 +81,14 @@ public enum MouseAction: Codable, Hashable, Sendable {
     case lookUp
     case zoomIn
     case zoomOut
+    case smartZoom
     case shortcut(KeyShortcut)
 
     /// Actions offered in pickers (custom shortcuts are added via the recorder).
     public static let presets: [MouseAction] = [
         .missionControl, .appWindows, .showDesktop, .launchpad,
         .spaceLeft, .spaceRight, .back, .forward, .middleClick,
-        .lookUp, .zoomIn, .zoomOut,
+        .lookUp, .zoomIn, .zoomOut, .smartZoom,
     ]
 
     public var title: String {
@@ -104,6 +105,7 @@ public enum MouseAction: Codable, Hashable, Sendable {
         case .lookUp: "Look Up"
         case .zoomIn: "Zoom In"
         case .zoomOut: "Zoom Out"
+        case .smartZoom: "Smart Zoom"
         case .shortcut(let s): "Shortcut \(s.displayString)"
         }
     }
@@ -234,6 +236,25 @@ public struct ScrollSettings: Codable, Hashable, Sendable {
     }
 }
 
+public struct UpdateSettings: Codable, Hashable, Sendable {
+    public var checkAutomatically = true
+    /// Download, install and relaunch without asking. Off: only show a notice.
+    public var installAutomatically = false
+
+    public init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case checkAutomatically, installAutomatically
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = UpdateSettings()
+        checkAutomatically = try c.decodeIfPresent(Bool.self, forKey: .checkAutomatically) ?? d.checkAutomatically
+        installAutomatically = try c.decodeIfPresent(Bool.self, forKey: .installAutomatically) ?? d.installAutomatically
+    }
+}
+
 public struct MouseConfig: Codable, Hashable, Sendable {
     public static let currentVersion = 1
 
@@ -243,8 +264,25 @@ public struct MouseConfig: Codable, Hashable, Sendable {
     public var mappings: [ButtonMapping] = []
     /// Keyed by 1-based button number.
     public var holdBehaviors: [Int: ButtonHoldBehavior] = [:]
+    public var updates = UpdateSettings()
 
     public init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case version, enabled, scroll, mappings, holdBehaviors, updates
+    }
+
+    // Missing keys fall back to defaults, so configs saved by older versions still load.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = MouseConfig()
+        version = try c.decodeIfPresent(Int.self, forKey: .version) ?? d.version
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? d.enabled
+        scroll = try c.decodeIfPresent(ScrollSettings.self, forKey: .scroll) ?? d.scroll
+        mappings = try c.decodeIfPresent([ButtonMapping].self, forKey: .mappings) ?? d.mappings
+        holdBehaviors = try c.decodeIfPresent([Int: ButtonHoldBehavior].self, forKey: .holdBehaviors) ?? d.holdBehaviors
+        updates = try c.decodeIfPresent(UpdateSettings.self, forKey: .updates) ?? d.updates
+    }
 
     /// Defaults for a typical five-button mouse.
     public static var defaults: MouseConfig {

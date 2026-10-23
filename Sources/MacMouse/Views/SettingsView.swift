@@ -15,7 +15,8 @@ struct SettingsView: View {
                 .tabItem { Label("Buttons", systemImage: "computermouse") }
         }
         .frame(width: 620, height: 480)
-        .onAppear { NSApp.activate() }
+        .onAppear { SettingsWindow.bringToFront() }
+        .onDisappear { SettingsWindow.didClose() }
     }
 }
 
@@ -54,12 +55,68 @@ private struct GeneralTab: View {
                     Text(error).foregroundStyle(.red)
                 }
             }
+            if state.canCheckForUpdates {
+                UpdatesSection(state: state)
+            }
             Section {
                 LabeledContent("Version", value: AppVersion.marketing)
                 Button("Restore Default Settings") { state.restoreDefaults() }
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+private struct UpdatesSection: View {
+    @Bindable var state: AppState
+
+    var body: some View {
+        Section {
+            Toggle("Check for updates automatically", isOn: $state.config.updates.checkAutomatically)
+            Toggle("Install updates automatically", isOn: $state.config.updates.installAutomatically)
+                .disabled(!state.canInstallUpdates || !state.config.updates.checkAutomatically)
+            LabeledContent {
+                switch state.update {
+                case .available(let release):
+                    Button(state.canInstallUpdates ? "Install \(release.version.description)" : "Download \(release.version.description)") {
+                        state.installUpdate()
+                    }
+                case .checking, .installing:
+                    ProgressView().controlSize(.small)
+                default:
+                    Button("Check Now") { state.checkForUpdates(userInitiated: true) }
+                }
+            } label: {
+                Text(statusText)
+                    .foregroundStyle(statusColor)
+            }
+        } header: {
+            Text("Updates")
+        } footer: {
+            if !state.canInstallUpdates {
+                Text("This copy isn't signed for self-updating, so new versions open the download page instead.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var statusText: String {
+        switch state.update {
+        case .idle: "Not checked yet"
+        case .checking: "Checking…"
+        case .upToDate: "MacMouse is up to date"
+        case .installing: "Installing update…"
+        case .available(let release): "⚠︎ Version \(release.version.description) is available"
+        case .failed(let message): message
+        }
+    }
+
+    private var statusColor: Color {
+        switch state.update {
+        case .available: .orange
+        case .failed: .red
+        default: .secondary
+        }
     }
 }
 
@@ -91,7 +148,7 @@ private struct ScrollTab: View {
             } header: {
                 Text("Hold a key while scrolling")
             } footer: {
-                Text("Zoom sends ⌘= / ⌘−. Other modifiers pass through to the app.")
+                Text("Zoom works like a trackpad pinch. Other modifiers pass through to the app.")
                     .foregroundStyle(.secondary)
             }
         }

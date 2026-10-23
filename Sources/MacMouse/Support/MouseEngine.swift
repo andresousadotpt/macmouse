@@ -34,6 +34,10 @@ final class MouseEngine: NSObject {
     private var displayLink: CADisplayLink?
     private var lastFrame: TimeInterval?
     private var glidePhase: EventPoster.Phase = .began
+    // Zoom reuses the glide animator on one axis, in units of 1/1000 magnification.
+    private var zoomAnimator = ScrollAnimator(tuning: .init(pixelsPerNotch: 80, timeConstant: 0.08))
+    private var zoomPhase: EventPoster.Phase = .began
+    private static let zoomUnitsPerMagnification = 1000.0
 
     private static let dragStartDistance = 6.0
     private static let spaceSwitchCooldown: TimeInterval = 0.45
@@ -89,6 +93,7 @@ final class MouseEngine: NSObject {
         clickTimer?.cancel()
         heldButton = nil
         animator.stop()
+        zoomAnimator.stop()
         displayLink?.isPaused = true
     }
 
@@ -253,8 +258,7 @@ final class MouseEngine: NSObject {
         }
         if mode.zoom {
             animator.stop()
-            let amount = dy != 0 ? dy : dx
-            EventPoster.perform((amount > 0 ? MouseAction.zoomIn : .zoomOut).route)
+            zoom(by: dy != 0 ? dy : dx, at: now)
             return false
         }
 
@@ -282,6 +286,14 @@ final class MouseEngine: NSObject {
         return false
     }
 
+    /// Zooms like a trackpad pinch. Follows the scroll direction, so
+    /// "Reverse direction" flips it too.
+    private func zoom(by amount: Double, at now: TimeInterval) {
+        let zoomIn = config.scroll.reverseDirection ? amount < 0 : amount > 0
+        zoomAnimator.addNotches(dx: 0, dy: zoomIn ? 1 : -1, at: now)
+        startGlide()
+    }
+
     /// Flips a wheel event in place so pass-through scrolls honour "Reverse direction".
     private static func reverse(_ event: CGEvent) {
         let fields: [CGEventField] = [
@@ -298,7 +310,7 @@ final class MouseEngine: NSObject {
         let amount = dy != 0 ? dy : dx
         switch wheel {
         case .zoom:
-            EventPoster.perform((amount > 0 ? MouseAction.zoomIn : .zoomOut).route)
+            zoom(by: amount, at: now)
         case .spaces:
             guard now - lastSpaceSwitch >= Self.spaceSwitchCooldown else { return }
             lastSpaceSwitch = now
@@ -337,10 +349,21 @@ final class MouseEngine: NSObject {
             EventPoster.scroll(dx: Int32(delta.dx), dy: Int32(delta.dy), phase: glidePhase)
             glidePhase = .changed
         }
-        if animator.isIdle {
-            if glidePhase == .changed {
-                EventPoster.scroll(dx: 0, dy: 0, phase: .ended)
-            }
+        let zoom = zoomAnimator.step(dt: dt).dy
+        if zoom != 0 {
+            EventPoster.magnify(Double(zoom) / Self.zoomUnitsPerMagnification, phase: zoomPhase)
+            zoomPhase = .changed
+        }
+
+        if animator.isIdle && glidePhase == .changed {
+            EventPoster.scroll(dx: 0, dy: 0, phase: .ended)
+            glidePhase = .began
+        }
+        if zoomAnimator.isIdle && zoomPhase == .changed {
+            EventPoster.magnify(0, phase: .ended)
+            zoomPhase = .began
+        }
+        if animator.isIdle && zoomAnimator.isIdle {
             link.isPaused = true
             lastFrame = nil
         }

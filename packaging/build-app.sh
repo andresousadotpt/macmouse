@@ -24,6 +24,9 @@ mkdir -p "$BUNDLE/Contents/Resources"
 
 cp "$BIN_PATH" "$BUNDLE/Contents/MacOS/$APP_EXECUTABLE"
 cp "$ROOT/packaging/Info.plist" "$BUNDLE/Contents/Info.plist"
+# Where the in-app updater looks for releases.
+/usr/libexec/PlistBuddy -c "Add :MacMouseUpdateRepository string $GITHUB_OWNER/$GITHUB_REPO" \
+  "$BUNDLE/Contents/Info.plist"
 cp "$ROOT/packaging/App.entitlements" "$BUNDLE/Contents/entitlements.plist"
 
 if [[ ! -f "$RESOURCES_DIR/Logo.png" ]]; then
@@ -48,7 +51,14 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$ICONSET" -o "$BUNDLE/Contents/Resources/AppIcon.icns"
 
-echo "==> Ad-hoc code signing"
-codesign --force --deep --sign - "$BUNDLE" || echo "warning: codesign failed (app will still run locally)"
+# With a stable certificate, macOS keeps Accessibility access across updates and the
+# in-app updater can verify downloads. Without one, fall back to ad-hoc signing.
+if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
+  echo "==> Code signing with \"$CODESIGN_IDENTITY\""
+  codesign --force --deep --sign "$CODESIGN_IDENTITY" --identifier "$APP_BUNDLE_ID" "$BUNDLE"
+else
+  echo "==> Ad-hoc code signing (set CODESIGN_IDENTITY for a stable signature)"
+  codesign --force --deep --sign - "$BUNDLE" || echo "warning: codesign failed (app will still run locally)"
+fi
 
 echo "==> Done: $BUNDLE"

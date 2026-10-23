@@ -32,6 +32,8 @@ final class ConfigTests: XCTestCase {
     func testRoutes() {
         XCTAssertEqual(MouseAction.missionControl.route, .systemHotKey(.missionControl))
         XCTAssertEqual(MouseAction.back.route, .keystroke(keyCode: KeyCode.leftBracket, modifiers: .command))
+        XCTAssertEqual(MouseAction.smartZoom.route, .smartZoom)
+        XCTAssertTrue(MouseAction.presets.contains(.smartZoom))
         let custom = KeyShortcut(keyCode: 0x00, modifiers: [.command, .shift], keyLabel: "A")
         XCTAssertEqual(MouseAction.shortcut(custom).route, .keystroke(keyCode: 0x00, modifiers: [.command, .shift]))
         XCTAssertEqual(custom.displayString, "⇧⌘A")
