@@ -1,0 +1,26 @@
+# Homebrew cask template — CI generates the final cask from packaging/app.env on each release.
+cask "{{CASK_NAME}}" do
+  version "{{VERSION}}"
+  sha256 "{{SHA256}}"
+
+  url "https://github.com/{{GITHUB_OWNER}}/{{GITHUB_REPO}}/releases/download/v#{version}/{{APP_BUNDLE_NAME}}-#{version}.zip"
+  name "{{APP_DISPLAY_NAME}}"
+  desc "{{APP_DESCRIPTION}}"
+  homepage "https://github.com/{{GITHUB_OWNER}}/{{GITHUB_REPO}}"
+
+  depends_on macos: :sonoma
+
+  app "{{APP_BUNDLE_NAME}}.app"
+
+  caveats <<~EOS
+    {{APP_DISPLAY_NAME}} needs Accessibility access to change mouse input:
+      System Settings > Privacy & Security > Accessibility
+
+    Builds are ad-hoc signed, so after each upgrade remove the old
+    {{APP_DISPLAY_NAME}} entry from that list and enable it again.
+  EOS
+
+  zap trash: [
+    "~/Library/Application Support/{{APP_SUPPORT_DIR}}",
+  ]
+end

@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          !startsWith(github.event.workflow_run.head_commit.message, 'chore: bump version') }}
+    env:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Load app config
+        run: |
+          set -a
+          # shellcheck source=packaging/app.env
+          source packaging/app.env
+          set +a
+          {
+            echo "APP_BUNDLE_NAME=$APP_BUNDLE_NAME"
+            echo "APP_EXECUTABLE=$APP_EXECUTABLE"
+            echo "APP_DISPLAY_NAME=$APP_DISPLAY_NAME"
+            echo "APP_DESCRIPTION=$APP_DESCRIPTION"
+            echo "APP_SUPPORT_DIR=$APP_SUPPORT_DIR"
+            echo "GITHUB_OWNER=$GITHUB_OWNER"
+            echo "GITHUB_REPO=$GITHUB_REPO"
+            echo "CASK_NAME=$CASK_NAME"
+            echo "HOMEBREW_TAP=$HOMEBREW_TAP"
+          } >> "$GITHUB_ENV"
+
+      - name: Bump version if tag exists
+        id: version
+        run: |
+          chmod +x packaging/bump-version.sh
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" packaging/Info.plist)
+          if git rev-parse "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            VERSION=$(./packaging/bump-version.sh patch)
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add packaging/Info.plist
+            git commit -m "chore: bump version to ${VERSION}"
+            git checkout -B main
+            git push origin main
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build app
+        run: |
+          chmod +x packaging/build-app.sh
+          ./packaging/build-app.sh
+
+      - name: Create release zip
+        run: |
+          COPYFILE_DISABLE=1 ditto -c -k --keepParent \
+            "dist/${APP_BUNDLE_NAME}.app" \
+            "${APP_BUNDLE_NAME}-${{ steps.version.outputs.version }}.zip"
+
+      - name: Upload GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ env.APP_BUNDLE_NAME }} ${{ steps.version.outputs.version }}
+          files: ${{ env.APP_BUNDLE_NAME }}-${{ steps.version.outputs.version }}.zip
+          make_latest: true
+          overwrite_files: true
+
+      - name: Update Homebrew cask
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          SHA256=$(shasum -a 256 "${APP_BUNDLE_NAME}-${VERSION}.zip" | awk '{ print $1 }')
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP}.git" tap
+          mkdir -p tap/Casks
+          sed \
+            -e "s/{{CASK_NAME}}/${CASK_NAME}/g" \
+            -e "s/{{VERSION}}/${VERSION}/g" \
+            -e "s/{{SHA256}}/${SHA256}/g" \
+            -e "s/{{GITHUB_OWNER}}/${GITHUB_OWNER}/g" \
+            -e "s/{{GITHUB_REPO}}/${GITHUB_REPO}/g" \
+            -e "s/{{APP_BUNDLE_NAME}}/${APP_BUNDLE_NAME}/g" \
+            -e "s/{{APP_DISPLAY_NAME}}/${APP_DISPLAY_NAME}/g" \
+            -e "s/{{APP_DESCRIPTION}}/${APP_DESCRIPTION}/g" \
+            -e "s/{{APP_SUPPORT_DIR}}/${APP_SUPPORT_DIR}/g" \
+            packaging/cask.rb.template > "tap/Casks/${CASK_NAME}.rb"
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "Casks/${CASK_NAME}.rb"
+          git diff --cached --quiet || git commit -m "${CASK_NAME} ${VERSION}"
+          git push origin main

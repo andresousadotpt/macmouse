@@ -1,0 +1,17 @@
+.build/
+dist/
+.DS_Store
+*.xcodeproj
+.swiftpm/
+*.dmg
+*.zip
+*.app/
+packaging/AppIcon.png
+.vscode/
+.env
+.env.*
+*.pem
+*.p12
+DerivedData/
+*.xcuserdata
+*.dSYM/
