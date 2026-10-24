@@ -15,17 +15,19 @@ enum EventPoster {
         event.getIntegerValueField(.eventSourceUserData) == tag
     }
 
-    private static func post(_ event: CGEvent?) {
+    /// Posts with explicit modifier flags. Events created from a source inherit the
+    /// modifiers it remembers, so after a ⌘[ keystroke (Back) a later synthetic scroll
+    /// could arrive as ⌘-scroll and zoom instead.
+    private static func post(_ event: CGEvent?, flags: CGEventFlags = []) {
         guard let event else { return }
+        event.flags = flags
         event.setIntegerValueField(.eventSourceUserData, value: tag)
         event.post(tap: .cghidEventTap)
     }
 
     static func pressKey(_ keyCode: UInt16, flags: CGEventFlags) {
         for isDown in [true, false] {
-            let event = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: isDown)
-            event?.flags = flags
-            post(event)
+            post(CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: isDown), flags: flags)
         }
     }
 
@@ -45,6 +47,10 @@ enum EventPoster {
     /// Posts a plain down/up pair for a 1-based button number (3 = middle).
     static func click(button: Int) {
         let location = CGEvent(source: nil)?.location ?? .zero
+        // Keep the modifiers physically held, so ⌘-middle-click still opens a background tab.
+        let held = CGEventFlags(rawValue: ModifierSet(
+            eventFlags: CGEventSource.flagsState(.hidSystemState).rawValue
+        ).rawValue)
         let number = Int64(button - 1)
         for type in [CGEventType.otherMouseDown, .otherMouseUp] {
             let event = CGEvent(
@@ -53,7 +59,7 @@ enum EventPoster {
             )
             event?.setIntegerValueField(.mouseEventButtonNumber, value: number)
             event?.setIntegerValueField(.mouseEventClickState, value: 1)
-            post(event)
+            post(event, flags: held)
         }
     }
 
